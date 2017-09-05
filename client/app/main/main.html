@@ -1,0 +1,74 @@
+<navbar></navbar>
+
+<header class="hero-unit" id="banner">
+  <div class="container">
+    <h1>Delivery APP!</h1>
+    <p class="lead">Delivery ,made easy</p>
+  </div>
+</header>
+
+<div class="container">
+  <div class="row">
+
+    <!-- <div class="col-lg-12">
+      <h1 class="page-header">Tasks:</h1>
+      <ul class="nav nav-tabs" ng-repeat="order in orders">
+      
+        <li><a href="#" tooltip="{{order.description}}">{{order.name}}<button type="button" ng-click="deleteThing(thing)">&times;</button></a></li>
+      </ul>
+    </div> -->
+
+    <div class="col-md-3 col-lg-4 col-md-pull-3">
+      <h2 class="page-header">Tasks:</h2>
+      <uib-tabset>
+
+        <uib-tab index="0" heading="UNASSIGNED">
+          <ul ng-repeat="order in orders.unassigned">
+            <li><a href="#" tooltip="{{order.description}}">{{order.name}}<button type="button" class="glyphicon glyphicon-ok" ng-click="assignOrder(order)"></button></a></li>
+          </ul>
+        </uib-tab>
+
+        <uib-tab index="1" heading="ASSIGNED">
+          <ul ng-repeat="order in orders.assigned">
+            <li><a href="#" tooltip="{{order.description}}">{{order.name}}</a></li>
+          </ul>
+        </uib-tab>
+
+        <uib-tab index="2" heading="COMPLETED">
+          <ul ng-repeat="order in orders.completed">
+            <li><a href="#" tooltip="{{order.description}}">{{order.name}}</a></li>
+          </ul>
+        </uib-tab>
+      </uib-tabset>
+    </div>
+
+    <div class="col-md-3 col-lg-4 col-md-push-7">
+      <h2 class="page-header">Runners:</h2>
+      <uib-tabset>
+          
+          <uib-tab index="3" heading="FREE">
+            <ul ng-repeat="runner in runners.free">
+              <li><a href="#">{{runner.name}}</a></li>
+            </ul>
+          </uib-tab> 
+          
+          <uib-tab index="4" heading="BUSY">
+            <ul ng-repeat="runner in runners.busy">
+              <li><a href="#">{{runner.name}}</a></li>
+            </ul>
+          </uib-tab>
+
+          <uib-tab index="5" heading="INACTIVE">
+            <ul ng-repeat="runner in runners.inactive">
+              <li><a href="#">{{runner.name}}</a></li>
+            </ul>
+          </uib-tab>
+
+      </uib-tabset>
+    </div>
+
+  </div>
+
+</div>
+
+<footer></footer>
