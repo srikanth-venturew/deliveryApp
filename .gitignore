@@ -1,6 +1,7 @@
 node_modules
 public
 .tmp
+.vscode
 .idea
 client/bower_components
 dist
