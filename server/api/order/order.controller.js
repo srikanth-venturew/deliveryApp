@@ -162,10 +162,10 @@ function validateCreateOrderData(req) {
 // Creates a new Order in the DB
 exports.create = function (req, res) {
   validateCreateOrderData(req).then(function (data) {
-    console.log("succeded :", data);
+    //console.log("succeded :", data);
     Order.createAsync(data)
       .then(function (order) {
-        console.log('order successfully created :', order);
+        //console.log('order successfully created :', order);
         sendJSONresponse(res, http_status.CREATED, {
           "status": "success",
           "message": "order successfully created",
@@ -219,10 +219,7 @@ function updateGeoCoordinates(googleMapsClient,order){
           if (err) {
             console.log('Error updating order document');
           }
-          else {
-            console.log("order successfully updated with coordinates :", order);
-          }
-         })
+         });
        }
      });
 
