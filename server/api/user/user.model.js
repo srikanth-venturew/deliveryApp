@@ -5,37 +5,131 @@ var Schema = mongoose.Schema;
 var crypto = require('crypto');
 var authTypes = ['github', 'twitter', 'facebook', 'google'];
 
+var constants = require('../../config/constants');
+
 //Runner Schema , 
 var RunnerSchema = new Schema({
   //The work type for the runner : part or full time
   workType: {
-      type: String,
-      default: 'fullTime'
+      type: Number,
+      default: constants.RUNNER_WORK_FULL_TIME
+  },
+  //The name of the team to which the runner belongs to .
+  team:{
+    type:String
   },
   //The status of the app , default is on
   appStatus: {
-      type: String,
-      default: 'on'
+      type: Number,
+      default: constants.APP_STATUS_ON
   },
   //Current coordinates of the runner 
   coords: {
       type: [Number],
       index: '2dsphere'
   },
-  status: {
-      type: String,
-      default: 'free'
+  homeBranch:{
+    type: String
   },
-  deliveryId: {
+  //free or busy
+  free: {
+      type: Number,
+      default: constants.RUNNER_FREE
+  },
+  //percentage of the battery level
+  battery:{
+    type: Number,
+  },
+  //car/bike .,etc
+  vehicleType:{
+    type: String
+  },
+  //Number 
+  vehicleNumber:{
+    type:String
+  },
+  //The manager of the runner 
+  manager:{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  //Rating or stars for the runner
+  rating :{
+    type: Number
+  },
+  //IOS or android
+  deviceName:{
+    type: String
+  },
+  //version of the device
+  deviceVersion:{
+    type: String
+  },
+  //Last location where the runner was spotted
+  lastLocation:{
+    type: String
+  },
+  deliveryId: [{
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Order',
       default: null
+  }],
+  totalDistanceTravelled:{
+    type:Number
+  },
+  jobStatus:{
+    type:Number,
+    default:constants.WORKING
   }
 });
 
+//Runner Schema , 
+var VendorSchema = new Schema({
+  //The name of the vendor like HelloFood .,etc
+  name: {
+      type: String,
+      validate: {
+        validator: function(v) {
+          return /^.{4,}$/.test(v);
+        },
+        message: '{VALUE} is not valid'
+      },
+      required:true
+  },
+  //The type of delivery //onDemand,Scheduled .,etc
+  deliveryServiceType:{
+    type: String,
+    required:true
+  },
+  //The price band selected at the time of the registration
+  planBand:{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'PriceBand',
+    required:true
+  },
+  apiKey:{
+    type: String
+  },
+  jobStatus:{
+    type:Number,
+    default:constants.WORKING
+  }
+});
 
 var UserSchema = new Schema({
-  name: String,
+  firstName: {
+    type:String,
+    validate: {
+      validator: function(v) {
+        return /^.{3,}$/.test(v);
+      },
+      message: '{VALUE} is not valid'
+    },
+    required:true
+  },
+  lastName: {
+    type:String
+  },
   email: {
     type: String,
     lowercase: true
@@ -45,15 +139,43 @@ var UserSchema = new Schema({
     default: 'user'
   },
   password: String,
+  phoneNumber:{
+    type : Number,
+    validate: {
+      validator: function(v) {
+        return /^(\+?91|0)?[789]\d{9}$/.test(v);
+      },
+      message: '{VALUE} is not valid'
+    },
+    required:true
+  },
+  address:String,
+  area:String,
+  subArea:String,
+  city:String,
+  Country:String,
+  zip:{
+    type:Number,
+    validate: {
+      validator: function(v) {
+        return /^[0-9]{6,6}$/.test(v);
+      },
+      message: '{VALUE} is not valid'
+    },
+    required:true
+  },
   provider: String,
   salt: String,
   facebook: {},
   twitter: {},
   google: {},
   github: {},
-  mobileNumber:Number,
-  address:String,
-  runner:RunnerSchema
+  runner:RunnerSchema,
+  vendor:VendorSchema,
+  active:{
+    type: Number,
+    default: constants.ACCOUNT_ACTIVE
+  }
 });
 
 /**

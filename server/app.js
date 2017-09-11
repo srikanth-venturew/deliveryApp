@@ -11,6 +11,8 @@ var express = require('express');
 var mongoose = require('mongoose');
 var config = require('./config/environment');
 
+
+
 // Connect to MongoDB
 mongoose.connect(config.mongo.uri, config.mongo.options);
 mongoose.connection.on('error', function(err) {
@@ -37,6 +39,7 @@ var googleMapsClient = require('@google/maps').createClient({
   key: 'AIzaSyAriL3vlwqz9jJu1jrXY7owATX0TtLWt8o'
 });
 app.set('googleMapsClient', googleMapsClient);
+
 
 
 // Start server

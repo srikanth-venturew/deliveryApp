@@ -13,6 +13,9 @@ var _ = require('lodash');
 var http_status = require('http-status-codes');
 var Order = require('./order.model');
 var User = require('../user/user.model');
+var validator = require('validator');
+var _ = require('underscore');
+var Promise = require('bluebird');
 
 
 function handleError(res, statusCode, message) {
@@ -90,108 +93,142 @@ exports.index = function (req, res) {
 exports.show = function (req, res) {
   if (req.params && req.params.id) {
     Order
-        .findById(req.params.id, {status:1,_id:0},function (err, order) {
-            if (!order) {
-                sendJSONresponse(res, http_status.NOT_FOUND, {
-                    "status":"failure",
-                    "message": "no such order found"
-                });
-                return;
-            } else if (err) {
-                console.log(err);
-                sendJSONresponse(res, http_status.INTERNAL_SERVER_ERROR, err);
-                return;
-            }
-            sendJSONresponse(res, http_status.OK, {
-                "status": "success",
-                "message": "successfully obtained status of the order",
-                "data":order
-            });
+      .findById(req.params.id, { status: 1, _id: 0 }, function (err, order) {
+        if (!order) {
+          sendJSONresponse(res, http_status.NOT_FOUND, {
+            "status": "failure",
+            "message": "no such order found"
+          });
+          return;
+        } else if (err) {
+          console.log(err);
+          sendJSONresponse(res, http_status.INTERNAL_SERVER_ERROR, err);
+          return;
+        }
+        sendJSONresponse(res, http_status.OK, {
+          "status": "success",
+          "message": "successfully obtained status of the order",
+          "data": order
         });
-} else {
+      });
+  } else {
     console.log('No orderid specified');
     sendJSONresponse(res, http_status.NOT_FOUND, {
-        "status": "failure",
-        "message": "No orderid in request"
+      "status": "failure",
+      "message": "No orderid in request"
     });
-}
+  }
 };
 
+
+
+function validateCreateOrderData(req) {
+  var errors = [];
+  return new Promise(function (resolve, reject) {
+    if (_.isEmpty(req.body.name)) {
+      errors.push("Please enter a name for the task");
+    }
+    if (_.isEmpty(req.body.deliveryModel)) {
+      errors.push("Please enter a name for the deliveryModel");
+    }
+    if (_.isEmpty(req.body.deliveryItem)) {
+      errors.push("Please enter a name for the deliveryType");
+    }
+
+    if (_.isEmpty(req.body.pickupAddress) || _.isEmpty(req.body.pickupAddress.name) || _.isEmpty(req.body.pickupAddress.phoneNumber) || _.isEmpty(req.body.pickupAddress.address)
+      || _.isEmpty(req.body.pickupAddress.subArea) || _.isEmpty(req.body.pickupAddress.mainArea) || _.isEmpty(req.body.pickupAddress.landmark) || _.isEmpty(req.body.pickupAddress.state) || _.isEmpty(req.body.pickupAddress.city)
+      || _.isEmpty(req.body.pickupAddress.country) || _.isEmpty(req.body.pickupAddress.pinCode)) {
+      errors.push("Please enter the complete pickupAddress");
+    }
+    if (_.isEmpty(req.body.deliveryAddress) || _.isEmpty(req.body.deliveryAddress.name) || _.isEmpty(req.body.deliveryAddress.phoneNumber) || _.isEmpty(req.body.deliveryAddress.address)
+      || _.isEmpty(req.body.deliveryAddress.subArea) || _.isEmpty(req.body.deliveryAddress.mainArea) || _.isEmpty(req.body.deliveryAddress.landmark) || _.isEmpty(req.body.deliveryAddress.state) || _.isEmpty(req.body.deliveryAddress.city)
+      || _.isEmpty(req.body.deliveryAddress.country) || _.isEmpty(req.body.deliveryAddress.pinCode)) {
+      errors.push("Please enter the complete deliveryAddress");
+    }
+    if (_.isEmpty(req.body.requestedTime)) {
+      errors.push("Please enter a name for the deliveryType");
+    }
+    if (_.isEmpty(req.body.description)) {
+      errors.push("Please enter a name for the deliveryType");
+    }
+    if (errors.length == 0) {
+      resolve(req.body);
+    }
+    else {
+      reject(errors);
+    }
+  });
+}
 // Creates a new Order in the DB
 exports.create = function (req, res) {
-  if (req.body.name && req.body.deliveryModel && req.body.deliveryType && req.body.pickupAddress && req.body.deliveryAddress && req.body.requestedTime && req.body.description) {
-    var pickupCoords;
-    var deliveryCoords;
-    var deliveryId;
-    var googleMapsClient = req.app.get('googleMapsClient');
-    Order.create({
-      name:req.body.name,
-      deliveryModel: req.body.deliveryModel,
-      deliveryType: req.body.deliveryType,
-      pickupAddress: req.body.pickupAddress,
-      deliveryAddress: req.body.deliveryAddress,
-      requestedTime: req.body.requestedTime,
-      description:req.body.description
-    }, function (err, order) {
-      if (err) {
-        handleError(res,http_status.INTERNAL_SERVER_ERROR,"error creating the order")
-      }
-      else if (order) {
-        deliveryId = order._id;
+  validateCreateOrderData(req).then(function (data) {
+    console.log("succeded :", data);
+    Order.createAsync(data)
+      .then(function (order) {
+        console.log('order successfully created :', order);
         sendJSONresponse(res, http_status.CREATED, {
           "status": "success",
           "message": "order successfully created",
           "data": {
-            "deliveryId": deliveryId.toString()
+            "deliveryId": order._id.toString()
           }
         });
-        googleMapsClient.geocode({
-          address: req.body.pickupAddress
-        }, function (err, response) {
-          if (!err) {
-            pickupCoords = response.json.results[0].geometry.location;
-            console.log(pickupCoords);
-            googleMapsClient.geocode({
-              address: req.body.deliveryAddress
-            }, function (err, response) {
-              if (!err) {
-                deliveryCoords = response.json.results[0].geometry.location;
-                Order.findOneAndUpdate(
-                  {
-                    _id: deliveryId
-                  },
-                  {
-                    $set: {
-                      pickupCoords: [parseFloat(pickupCoords.lng), parseFloat(pickupCoords.lat)],
-                      deliveryCoords: [parseFloat(deliveryCoords.lng), parseFloat(deliveryCoords.lat)],
-                    }
-                  }, {
-                    new: true
-                  }
-                  , function (err, order) {
-                    if (err) {
-                      console.log('Error updating order document');
-                    }
-                    else if (order) {
-                      console.log("order successfully updated with coordinates :", order);
-                    }
-                  })
-              }
-            });
-
+        var googleMapsClient = req.app.get('googleMapsClient');
+        updateGeoCoordinates(googleMapsClient,order);
+      }).catch(function (e) {
+        console.log('errors :', e);
+        sendJSONresponse(res, http_status.BAD_REQUEST, {
+          "status": "failure",
+          "message": "Error creating order",
+          "data": {
+            errors: e.errors
           }
         });
-
+      })
+  }).catch(function (e) {
+    console.log('errors :', e);
+    sendJSONresponse(res, http_status.BAD_REQUEST, {
+      "status": "failure",
+      "message": "some parameters are missing or case is not correct in request,please check. :",
+      "data": {
+        errors: e
       }
     });
-  }
-  else {
-    sendJSONresponse(res,http_status.NOT_FOUND,{
-      "status": "failure",
-      "message": "some parameters are missing or case is not correct in request,please check."
-    });
-  }
+  });
 };
+
+function updateGeoCoordinates(googleMapsClient,order){
+  var pickupCoords;
+  var deliveryCoords;
+  googleMapsClient.geocode({
+   address: order.pickupAddress.address+" "+order.pickupAddress.subArea+" "+order.pickupAddress.landmark+" "+order.pickupAddress.mainArea+" "+order.pickupAddress.state+" "+order.pickupAddress.city+" "+order.pickupAddress.country+" "+
+   order.pickupAddress.pinCode
+  }, function (err, response) {
+   if (!err) {
+     pickupCoords = response.json.results[0].geometry.location;
+     console.log(pickupCoords);
+     googleMapsClient.geocode({
+       address: order.deliveryAddress.address+" "+order.deliveryAddress.subArea+" "+order.deliveryAddress.landmark+" "+order.deliveryAddress.mainArea+" "+order.deliveryAddress.state+" "+order.deliveryAddress.city+" "+order.deliveryAddress.country+" "+
+       order.deliveryAddress.pinCode
+     }, function (err, response) {
+       if (!err) {
+         deliveryCoords = response.json.results[0].geometry.location;
+         order.pickupAddress.coords = [parseFloat(pickupCoords.lng), parseFloat(pickupCoords.lat)];
+         order.deliveryAddress.coords = [parseFloat(deliveryCoords.lng), parseFloat(deliveryCoords.lat)];
+         order.save(function(err){
+          if (err) {
+            console.log('Error updating order document');
+          }
+          else {
+            console.log("order successfully updated with coordinates :", order);
+          }
+         })
+       }
+     });
+
+   }
+ });
+}
 
 // Updates an existing Order in the DB
 exports.update = function (req, res) {
@@ -217,73 +254,73 @@ exports.destroy = function (req, res) {
 //Assign an order to a runner :
 //Method : POST 
 //Accepts orderId , runnerId(userid) as parameters.
-exports.assignOrder = function(req,res){
-  console.log("orderid :",req.body.orderid);
-  console.log("userid :",req.body.userid);
-  if(req.body.orderid && req.body.userid){
-      Order.findById(req.body.orderid,function(err,order){
-          if(err){
-              console.log('error :',err);
-          }
-          if(!order){
+exports.assignOrder = function (req, res) {
+  console.log("orderid :", req.body.orderid);
+  console.log("userid :", req.body.userid);
+  if (req.body.orderid && req.body.userid) {
+    Order.findById(req.body.orderid, function (err, order) {
+      if (err) {
+        console.log('error :', err);
+      }
+      if (!order) {
+        sendJSONresponse(res, http_status.FORBIDDEN, {
+          "status": "failure",
+          "message": "no order found with this id"
+        });
+      }
+      else if (order) {
+        //console.log('order :',order);
+        //check if the order is not assigned first 
+        if (order.status == 'unassigned') {
+          User.findById(req.body.userid, function (err, user) {
+            //check if the user is a "runner" , he is "free" and he set status to "on" in mobile
+            //console.log('user :',user);
+            if (!user) {
               sendJSONresponse(res, http_status.FORBIDDEN, {
-                      "status": "failure",
-                      "message": "no order found with this id"
-              });        
-          }
-          else if(order){
-              //console.log('order :',order);
-              //check if the order is not assigned first 
-              if(order.status == 'unassigned'){
-                  User.findById(req.body.userid,function(err,user){
-                      //check if the user is a "runner" , he is "free" and he set status to "on" in mobile
-                      //console.log('user :',user);
-                      if(!user){
-                          sendJSONresponse(res, http_status.FORBIDDEN, {
-                              "status": "failure",
-                              "message": "no user found with this id"
-                          });        
-                      }
-                      else if(!user.runner || user.runner.status == 'atWork' || user.runner.appStatus == 'off'){
-                          sendJSONresponse(res, http_status.FORBIDDEN, {
-                              "status": "failure",
-                              "message": "cannot assign to this runner , he is not available"
-                          });        
-                      }
-                      else{
-                          user.runner.status = 'atWork';
-                          user.runner.deliveryId = order._id;
-                          order.status = 'assigned';
-                          order.runnerId = user._id;
-                          user.save(function(err){
-                              if(err){
-                                  console.log('error saving user while adding task to him');
-                              }
-                          });
-                          order.save(function(err){
-                              if(err){
-                                  console.log('error saving order while adding task to runner');
-                              }
-                          });
-                          //Run any background tasks here:-
-                          sendJSONresponse(res, http_status.OK, {
-                              "status": "success",
-                              "message": "task successfully assigned to runner"
-                          });
-                      }
-                  });
-              }
-              else{
-                  sendJSONresponse(res, http_status.FORBIDDEN, {
-                      "status": "failure",
-                      "message": "task is already assigned to a runner"
-                  });
-              }
-          }
-      })
+                "status": "failure",
+                "message": "no user found with this id"
+              });
+            }
+            else if (!user.runner || user.runner.status == 'atWork' || user.runner.appStatus == 'off') {
+              sendJSONresponse(res, http_status.FORBIDDEN, {
+                "status": "failure",
+                "message": "cannot assign to this runner , he is not available"
+              });
+            }
+            else {
+              user.runner.status = 'atWork';
+              user.runner.deliveryId = order._id;
+              order.status = 'assigned';
+              order.runnerId = user._id;
+              user.save(function (err) {
+                if (err) {
+                  console.log('error saving user while adding task to him');
+                }
+              });
+              order.save(function (err) {
+                if (err) {
+                  console.log('error saving order while adding task to runner');
+                }
+              });
+              //Run any background tasks here:-
+              sendJSONresponse(res, http_status.OK, {
+                "status": "success",
+                "message": "task successfully assigned to runner"
+              });
+            }
+          });
+        }
+        else {
+          sendJSONresponse(res, http_status.FORBIDDEN, {
+            "status": "failure",
+            "message": "task is already assigned to a runner"
+          });
+        }
+      }
+    })
   }
-  else{
-    sendJSONresponse(res,http_status.NOT_FOUND,{
+  else {
+    sendJSONresponse(res, http_status.NOT_FOUND, {
       "status": "failure",
       "message": "please send orderid and userid to assign an order"
     });

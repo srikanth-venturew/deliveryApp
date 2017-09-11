@@ -4,6 +4,8 @@ var User = require('./user.model');
 var passport = require('passport');
 var config = require('../../config/environment');
 var jwt = require('jsonwebtoken');
+var validator = require('validator');
+var _ = require('underscore');  
 
 function validationError(res, statusCode) {
   statusCode = statusCode || 422;
@@ -62,46 +64,69 @@ exports.index = function (req, res) {
  * Creates a new user
  */
 exports.create = function (req, res, next) {
-  // var newUser = new User(req.body);
-  // newUser.provider = 'local';
-  // newUser.role = 'user';
-  // newUser.saveAsync()
-  //   .spread(function(user) {
-  //     var token = jwt.sign({ _id: user._id }, config.secrets.session, {
-  //       expiresInMinutes: 60 * 5
-  //     });
-  //     res.json({ token: token });
-  //   })
-  //   .catch(validationError(res));
-  var newUser = new User(req.body);
-  newUser.provider = 'local';
-  if (!newUser.role) {
-    newUser.role = 'user';
+  
+  var errors = [];
+  if(!validator.isEmail(req.body.email)){
+    errors.push("Not a valid email");
   }
-  if (newUser.role == 'runner') {
-    if (!newUser.runner) {
-      newUser.runner = {};
-      console.log("req.body :", req.body);
-      if (req.body.runner && req.body.runner.workType) {
-        newUser.runner.workType = req.body.workType;
+  if(validator.isEmpty(req.body.firstName)){
+    errors.push("first name is empty");
+  }
+  if(req.body.role != "user" && req.body.role != "vendor" && req.body.role != "runner" && req.body.role != "admin"){
+    errors.push("Please send a valid role type");
+  }
+  else if(req.body.role == "vendor" && _.isEmpty(req.body.vendor)){
+    errors.push("Please provide vendor information for role vendor");
+  }
+  else if(req.body.role == "runner" && _.isEmpty(req.body.runner)){
+    errors.push("Please provide runner information for role runner");
+  }
+  if(!validator.matches(req.body.password,/^(?=.*[0-9])(?=.*[!@#$%^&*_])[a-zA-Z0-9!@#$%^&*_]{6,}$/)){
+    errors.push("password must be atleast 6 characters long and must contain atleast one digit ,  uppercase , lowercase letter and special character");
+  }
+  if(!validator.isMobilePhone(req.body.phoneNumber,'en-IN')){
+    errors.push("Please enter a valid mobile number");
+  }
+  if (errors.length > 0) {
+    sendJSONresponse(res, 422, {
+      "status": "failure",
+      "message":"Please check the input", 
+      "data": {
+       "errors":errors
+      }
+    });
+  } else {
+    // normal processing here
+    var newUser = new User(req.body);
+    newUser.provider = 'local';
+    if (!newUser.role) {
+      newUser.role = 'user';
+    }
+    if (newUser.role == 'runner') {
+      if (!newUser.runner) {
+        newUser.runner = {};
+        console.log("req.body :", req.body);
+        if (req.body.runner && req.body.runner.workType) {
+          newUser.runner.workType = req.body.workType;
+        }
       }
     }
+    newUser.save()
+      .then(function (user) {
+        var token = jwt.sign({ _id: user._id }, config.secrets.session, {
+          expiresIn: 60 * 60 * 5
+        });
+        sendJSONresponse(res, 200, {
+          "status": "success",
+          "message": "User successfully created",
+          "data": {
+            "token": token,
+            "_id": user._id
+          }
+        });
+      })
+      .catch(validationError(res));
   }
-  newUser.save()
-    .then(function (user) {
-      var token = jwt.sign({ _id: user._id }, config.secrets.session, {
-        expiresIn: 60 * 60 * 5
-      });
-      sendJSONresponse(res, 200, {
-        "status": "success",
-        "message": "User successfully created",
-        "data": {
-          "token": token,
-          "_id": user._id
-        }
-      });
-    })
-    .catch(validationError(res));
 };
 
 // Updates an existing User in the DB

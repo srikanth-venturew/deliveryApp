@@ -13,7 +13,7 @@ angular.module('angularFullstackApp')
           email: $scope.user.email,
           password: $scope.user.password
         })
-        .then(function() {
+        .then(function(user) {
           // Logged in, redirect to home
           $state.go('main');
         })

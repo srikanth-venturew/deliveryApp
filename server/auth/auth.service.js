@@ -35,7 +35,7 @@ function isAuthenticated() {
       if(req.headers.authorization){
         validateJwt(req, res, next);
       }
-      else{
+      else{ 
         sendJSONresponse(res, 401, {
           "status": "failure",
           "message": "UnauthorizedError: No authorization token was found"
