@@ -69,7 +69,7 @@ exports.create = function (req, res, next) {
   if(!validator.isEmail(req.body.email)){
     errors.push("Not a valid email");
   }
-  if(validator.isEmpty(req.body.firstName)){
+  if(_.isEmpty(req.body.firstName)){
     errors.push("first name is empty");
   }
   if(req.body.role != "user" && req.body.role != "vendor" && req.body.role != "runner" && req.body.role != "admin"){
@@ -84,7 +84,7 @@ exports.create = function (req, res, next) {
   if(!validator.matches(req.body.password,/^(?=.*[0-9])(?=.*[!@#$%^&*_])[a-zA-Z0-9!@#$%^&*_]{6,}$/)){
     errors.push("password must be atleast 6 characters long and must contain atleast one digit ,  uppercase , lowercase letter and special character");
   }
-  if(!validator.isMobilePhone(req.body.phoneNumber,'en-IN')){
+  if(_.isEmpty(req.body.phoneNumber) || !validator.isMobilePhone(req.body.phoneNumber,'en-IN')){
     errors.push("Please enter a valid mobile number");
   }
   if (errors.length > 0) {
